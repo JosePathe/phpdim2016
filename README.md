@@ -5,4 +5,4 @@ Ceci est une documentation.
 
 ### Introduction
 
-Ceci est une introduction
+Ceci est une introduction.
