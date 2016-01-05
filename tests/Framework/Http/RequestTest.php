@@ -98,7 +98,7 @@ class RequestTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectException \RuntimeException
+     * @expectedException \RuntimeException
      */
     public function testAddSameHttpHeaderTwice()
     {
