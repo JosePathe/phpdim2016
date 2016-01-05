@@ -17,6 +17,10 @@ class Request
 	const HTTP = 'HTTP';
 	const HTTPS = 'HTTPS';
 
+	const VERSION_1_0 = '1.0';
+	const VERSION_1_1 = '1.1';
+	const VERSION_2_0 = '2.0';
+
 	private $method;				//GET ou POST
 	private $scheme;				//Protocole utilisé
 	private $schemeVersion; 		//Version du protocole
@@ -38,8 +42,8 @@ class Request
 	{
 		$this->setMethod($method);
 		$this->path = $path;
-		$this->scheme = $scheme;
-		$this->schemeVersion = $schemeVersion;
+		$this->setScheme($scheme);
+		$this->setSchemeVersion($schemeVersion);
 		$this->headers = $headers;
 		$this->body = $body;
 
@@ -69,6 +73,36 @@ class Request
 
 		$this->method = $method;
 	}
+
+	private function setScheme($scheme)
+	{
+		$schemes = [ self::HTTP, self::HTTPS ];
+
+		if(!in_array($scheme, $schemes)) {
+			throw new \InvalidArgumentException(sprintf(
+				'Scheme %s is not a supported and must be one of %s.',
+				$scheme,
+				implode(', ', $schemes)
+			));	
+		}
+
+		$this->scheme = $scheme;
+	}
+
+	private function setSchemeVersion($version)
+    {
+        $versions = [ self::VERSION_1_0, self::VERSION_1_1, self::VERSION_2_0 ];
+
+        if (!in_array($version, $versions)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Scheme version %s is not supported and must be one of %s.',
+                $version,
+                implode(', ', $versions)
+            ));
+        }
+        
+        $this->schemeVersion = $version;
+    }
 
 	public function getMethod()
 	{

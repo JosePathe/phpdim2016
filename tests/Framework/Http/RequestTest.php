@@ -27,11 +27,82 @@ class RequestTest extends \PHPUnit_Framework_TestCase
 	}
 
 	/**
+     * @dataProvider provideValidHttpScheme
+     */
+    public function testSupportedHttpScheme($scheme)
+    {
+        new Request('GET', '/', $scheme, '1.1');
+    }
+
+    public function provideValidHttpScheme()
+    {
+        return [
+            [ Request::HTTP ],
+            [ Request::HTTPS ],
+        ];
+    }
+
+	/**
+	 * @expectedException \InvalidArgumentException
+	 * @dataProvider provideInvalidHttpScheme
+	 */
+	public function testUnsupportedHttpScheme($scheme)
+	{
+		new Request('GET', '/', $scheme, '1.1');
+	}
+
+	public function provideInvalidHttpScheme()
+	{
+		return [
+            [ 'FTP' ],
+            [ 'SFTP' ],
+            [ 'SSH' ],
+        ];
+	}
+
+	/**
+     * @expectedException \InvalidArgumentException
+     * @dataProvider provideInvalidHttpSchemeVersion
+     */
+    public function testUnsupportedHttpSchemeVersion($version)
+    {
+        new Request('GET', '/', 'HTTP', $version);
+    }
+
+    public function provideInvalidHttpSchemeVersion()
+    {
+        return [
+            [ '0.1' ],
+            [ '0.5' ],
+            [ '1.2' ],
+            [ '1.5' ],
+            [ '2.1' ],
+        ];
+    }
+
+    /**
+     * @dataProvider provideValidHttpSchemeVersion
+     */
+    public function testSupportedHttpSchemeVersion($version)
+    {
+        new Request('GET', '/', 'HTTP', $version);
+    }
+    
+    public function provideValidHttpSchemeVersion()
+    {
+        return [
+            [ Request::VERSION_1_0 ],
+            [ Request::VERSION_1_1 ],
+            [ Request::VERSION_2_0 ],
+        ];
+    }
+
+	/**
 	 * @dataProvider providerRequestParameters
 	 */
 	public function testCreateRequestInstance($method, $path)
 	{
-		$request = new Request($method, '/', Request::HTTP, '1.1');
+		$request = new Request($method, $path, Request::HTTP, '1.1');
 
 		$this->assertSame($method, $request->getMethod());
 		$this->assertSame($path, $request->getPath());
@@ -44,15 +115,15 @@ class RequestTest extends \PHPUnit_Framework_TestCase
 	public function providerRequestParameters()
 	{
 		return [
-			[ Request::GET, '/' ],
-			[ Request::POST, '/home' ],
-			[ Request::PUT, '/foo' ],
-			[ Request::PATCH, '/bar' ],
-			[ Request::OPTIONS, '/options' ],
-			[ Request::CONNECT, '/lol' ],
-			[ Request::TRACE, '/contact' ],
-			[ Request::HEAD, '/fr/article' ],
-			[ Request::DELETE, '/cgv' ],
+			[ Request::GET,		'/' ],
+			[ Request::POST,	'/home' ],
+			[ Request::PUT,		'/foo' ],
+			[ Request::PATCH,	'/bar' ],
+			[ Request::OPTIONS,	'/options' ],
+			[ Request::CONNECT,	'/lol' ],
+			[ Request::TRACE,	'/contact' ],
+			[ Request::HEAD,	'/fr/article/42' ],
+			[ Request::DELETE,	'/cgv' ],
 		];
 	}
 }
