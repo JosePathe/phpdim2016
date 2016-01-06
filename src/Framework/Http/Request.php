@@ -40,6 +40,8 @@ class Request
 	 */
 	public function __construct($method, $path, $scheme, $schemeVersion, array $headers = [], $body = '')
 	{
+		$this->headers = [];
+
 		$this->setMethod($method);
 		$this->path = $path;
 		$this->setScheme($scheme);
@@ -169,8 +171,78 @@ class Request
 		return $this->body;
 	}
 
+	private function getPrologue()
+    {
+        return sprintf('%s %s %s/%s', $this->method, $this->path, $this->scheme, $this->schemeVersion);
+    }
+
 	public function getMessage()
 	{
+		$message = $this->getPrologue();
+
+		if(count($this->headers)) {
+			$message.= "\n";
+			foreach ($this->headers as $header => $value) {
+	    		$message.= sprintf("%s: %s\n", $header, $value);
+	    	}
+		}
+
+		$message.= "\n";
+		if ($this->body) {
+			$message.= $this->body;
+		}
+		
+		return $message;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function __toString()
+	{
+		return $this->getMessage();
+	}
+
+	public static function createFromMessage($message)
+	{
+		if (!is_string($message) || empty($message)) {
+			throw new MalformedHttpMessageException('HTTP message is not valid.');
+		}
+
+		// 1. Parse prologue (first required line)
+		$lines = explode(PHP_EOL, $message); //PHP_EOL = caractère de saut de ligne (\n)
+		$result = preg_match('#^(?P<method>[A-Z]{3,7}) (?P<path>.+) (?P<scheme>HTTPS?)\/(?P<version>[1-2]\.[0-2])$#', $lines[0], $matches);
+		if (!$result) {
+			throw new MalformedHttpMessageException('HTTP message prologue is malformed.');
+		}
+
+		array_shift($lines);
+
+		// 2. Parse list of headers (if any)
+		$i = 0;
+		$headers = [];
+		while ($line = $lines[$i]) {
+			$result = preg_match('#^(?P<header>[a-z][a-z0-9-]+)\: (?P<value>.+)#i', $line, $header);
+			if (!$result) {
+				throw new MalformedHttpMessageException(sprintf('Invalid header line at position %u: %s', $i+2, $line));
+			}
+			// $name = $header['name'];
+			// $value = $header['value'];
+			list(, $name, $value) = $header;
+
+			$headers[$name] = $value;
+			$i++;
+		}
+
+		// 3. Parse content (if any)
+		$i++;
+		$body = '';
+		if (isset($lines[$i])) {
+			$body = $lines[$i];
+		}
+
+		// 4. Construct
+		return new self($matches['method'], $matches['path'], $matches['scheme'], $matches['version'], $headers, $body);
 
 	}
 

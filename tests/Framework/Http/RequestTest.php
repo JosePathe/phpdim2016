@@ -110,6 +110,46 @@ class RequestTest extends \PHPUnit_Framework_TestCase
     	new Request('GET', '/', 'HTTP', '1.1', $headers);
     }
 
+    public function testGetMessage()
+    {
+    	$message = <<<MESSAGE
+GET /home HTTP/1.1
+host: http://wikipedia.com
+user-agent: Mozilla/Firefox
+content-type: application/json
+
+{ "foo": "bar" }
+MESSAGE;
+
+		$body = '{ "foo": "bar" }';
+        $headers = [
+            'Host' => 'http://wikipedia.com',
+            'User-Agent' => 'Mozilla/Firefox',
+            'Content-Type' => 'application/json',
+        ];
+        $request = new Request('GET', '/home', 'HTTP', '1.1', $headers, $body);
+        $this->assertSame($message, $request->getMessage());
+        $this->assertSame($message, (string) $request);
+    }
+
+    public function testCreateFromMessage()
+    {
+    	$message = <<<MESSAGE
+GET /home HTTP/1.1
+host: http://wikipedia.com
+user-agent: Mozilla/Firefox
+content-type: application/json
+
+{ "foo": "bar" }
+MESSAGE;
+
+		$request = Request::createFromMessage($message);
+
+		$this->assertInstanceOf(Request::class, $request);
+		$this->assertSame($message, $request->getMessage());
+		$this->assertSame($message, (string) $request);
+    }
+
 	/**
 	 * @dataProvider providerRequestParameters
 	 */
