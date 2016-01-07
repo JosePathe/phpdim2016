@@ -40,7 +40,11 @@ abstract class AbstractMessage implements MessageInterface
 
 	public function getHeaders()
 	{
-		return $this->headers;
+		$headers = [];
+		foreach ($this->headers as $header) {
+			$headers = array_merge($headers, $header->toArray());
+		}
+		return $headers;
 	}
 
 	public function getBody()
@@ -87,8 +91,18 @@ abstract class AbstractMessage implements MessageInterface
 
     public function getHeader($name)
     {
-    	$name = strtolower($name);
-    	return isset($this->headers[$name]) ? $this->headers[$name] : null;
+    	if ($header = $this->findHeader($name)) {
+    		return  $header->getValue();
+    	}
+    }
+
+    public function findHeader($name)
+    {
+    	foreach ($this->headers as $header) {
+    		if ($header->match($name)) {
+    			return $header;
+    		}
+    	}
     }
 
     /**
@@ -99,18 +113,16 @@ abstract class AbstractMessage implements MessageInterface
      * 
      * @throws \RuntimeException
      */
-    private function addHeader($header, $value)
+    private function addHeader($name, $value)
     {
-    	$header = strtolower($header);
-
-		if (isset($this->headers[$header])) {
+		if ($this->findHeader($name)) {
 			throw new \RuntimeException(sprintf(
 				"Header %s is already defined and cannot be set twice.",
-				$header
+				$name
 			));
 		}
 
-		$this->headers[$header] = $value;
+		$this->headers[] = new Header($name, (string) $value);
     }
 
     protected abstract function createPrologue();
@@ -120,13 +132,13 @@ abstract class AbstractMessage implements MessageInterface
 		$message = $this->createPrologue();
 
 		if(count($this->headers)) {
-			$message.= "\n";
-			foreach ($this->headers as $header => $value) {
-	    		$message.= sprintf("%s: %s\n", $header, $value);
+			$message.= PHP_EOL; //PHP_EOL == "\n"
+			foreach ($this->headers as $header) {
+	    		$message.= $header.PHP_EOL;
 	    	}
 		}
 
-		$message.= "\n";
+		$message.= PHP_EOL;
 		if ($this->body) {
 			$message.= $this->body;
 		}
@@ -153,20 +165,24 @@ abstract class AbstractMessage implements MessageInterface
 		$i = 0;
 		$headers = [];
 		while (!empty($lines[$i])) {
-			$line = $lines[$i];
-			$result = preg_match('#^(?P<header>[a-z][a-z0-9-]+)\: (?P<value>.+)#i', $line, $header);
-			if (!$result) {
-				throw new MalformedHttpMessageException(sprintf('Invalid header line at position %u: %s', $i+2, $line));
-			}
-			// $name = $header['name'];
-			// $value = $header['value'];
-			list(, $name, $value) = $header;
-
-			$headers[$name] = $value;
+			$headers = array_merge($headers, static::parseHeader($lines[$i], $i));
 			$i++;
 		}
 
 		return $headers;
+	}
+
+	private static function parseHeader($line, $position)
+	{
+		try {
+			return Header::createFromString($line)->toArray();
+		} catch (MalformedHttpMessageException $e) {
+			throw new MalformedHttpMessageException(
+				sprintf('Invalid header line at position %u: %s', $position+2, $line),
+				0,
+				$e
+			);
+		}
 	}
 
 	protected static function parseBody($message)
