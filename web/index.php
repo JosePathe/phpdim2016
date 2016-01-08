@@ -6,9 +6,8 @@ use Application\Controller\HelloWorldAction;
 use Framework\Http\Request;
 use Framework\Http\StreamableInterface;
 use Framework\Kernel;
-use Framework\Routing\Route;
+use Framework\ControllerFactory;
 use Framework\Routing\Router;
-use Framework\Routing\RouteCollection;
 use Framework\Routing\Loader\CompositeFileLoader;
 use Framework\Routing\Loader\PhpFileLoader;
 use Framework\Routing\Loader\XmlFileLoader;
@@ -19,7 +18,7 @@ $loader->add(new XmlFileLoader());
 
 $router = new Router(__DIR__.'/../config/routes.xml', $loader);
 
-$kernel = new Kernel($router);
+$kernel = new Kernel($router, new ControllerFactory());
 
 $response = $kernel->handle(Request::createFromGlobals());
 

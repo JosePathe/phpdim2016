@@ -39,12 +39,19 @@ class XmlFileLoader implements FileLoaderInterface
         if (empty($route['name'])) {
             throw new \RuntimeException('Each route must have a unique name.');
         }
+
         $name = (string) $route['name'];
         if (empty($route['path'])) {
             throw new \RuntimeException(sprintf('Route %s must have a path.', $name));
         }
+
+        $methods = [];
+        if (!empty($route['methods'])) {
+            $methods = explode('|', $route['methods']);
+        }
+
         $params = $this->parseRouteParams($route, $name);
-        $routes->add($name, new Route((string) $route['path'], $params));
+        $routes->add($name, new Route((string) $route['path'], $params, $methods));
     }
 
     private function parseRouteParams(\SimpleXMLElement $route, $name)

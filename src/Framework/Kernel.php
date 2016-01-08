@@ -7,14 +7,18 @@ use Framework\Http\RequestInterface;
 use Framework\Http\ResponseInterface;
 use Framework\Routing\RouterInterface;
 use Framework\Routing\RouteNotFoundException;
+use Framework\Routing\MethodNotAllowedException;
+use Framework\Routing\RequestContext;
 
 class Kernel implements KernelInterface
 {
 	private $router;
+	private $controllers;
 
-	public function __construct(RouterInterface $router)
+	public function __construct(RouterInterface $router, ControllerFactoryInterface $controllers)
 	{
 		$this->router = $router;
+		$this->controllers = $controllers;
 	}
 
 	/**
@@ -25,29 +29,33 @@ class Kernel implements KernelInterface
 	 */
 	public function handle(RequestInterface $request)
 	{
-		$response = null;
-
 		try {
-			$params = $this->router->match($request->getPath());
+			return $this->doHandle($request);
 		} catch (RouteNotFoundException $e) {
-			$response = new Response(
-				404,
-				$request->getScheme(),
-				$request->getSchemeVersion(),
-				[],
-				'Page Not Found'
-			);
-		}
-
-		if (!empty($params['_controller'])) {
-			$action = new $params['_controller']();
-			$response = call_user_func_array($action, [ $request ]);
-		}
-
-		if (!$response instanceof ResponseInterface) {
-			throw new \RuntimeException('A response instance must be set.');	
-		}
-
-		return $response;
+			return $this->createResponse($request, 'Page Not Found', Response::HTTP_NOT_FOUND);
+        } catch (MethodNotAllowedException $e) {
+            return $this->createResponse($request, 'Method Not Allowed', Response::HTTP_METHOD_NOT_ALLOWED);
+        } catch (\Exception $e) {
+            return $this->createResponse($request, 'Internal Server Error', Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 	}
+
+	private function doHandle(RequestInterface $request)
+    {
+        $context = RequestContext::createFromRequest($request);
+        $action = $this->controllers->createController($this->router->match($context));
+
+        $response = call_user_func_array($action, [ $request ]);
+
+        if (!$response instanceof ResponseInterface) {
+        	throw new \RuntimeException('A controller must return a Response object.');
+        }
+  
+        return $response;
+    }
+
+    private function createResponse(RequestInterface $request, $content, $statusCode = ResponseInterface::HTTP_OK)
+    {
+        return Response::createFromRequest($request, $content, $statusCode);
+    }
 }
