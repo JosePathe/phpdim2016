@@ -5,7 +5,8 @@ namespace tests\Framework;
 use Framework\ControllerFactory;
 
 class ControllerFactoryTest extends \PHPUnit_Framework_TestCase
-{/**
+{
+	/**
      * @expectedException \RuntimeException
      */
     public function testControllerClassDoesNotExist()

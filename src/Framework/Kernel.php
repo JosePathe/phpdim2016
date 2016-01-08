@@ -5,21 +5,24 @@ namespace Framework;
 use Framework\Http\Response;
 use Framework\Http\RequestInterface;
 use Framework\Http\ResponseInterface;
-use Framework\Routing\RouterInterface;
+use Framework\ServiceLocator\ServiceLocatorInterface;
 use Framework\Routing\RouteNotFoundException;
 use Framework\Routing\MethodNotAllowedException;
 use Framework\Routing\RequestContext;
 
 class Kernel implements KernelInterface
 {
-	private $router;
-	private $controllers;
+	private $dic;
 
-	public function __construct(RouterInterface $router, ControllerFactoryInterface $controllers)
-	{
-		$this->router = $router;
-		$this->controllers = $controllers;
+	public function __construct(ServiceLocatorInterface $dic)
+    {
+		$this->dic = $dic;
 	}
+
+    private function getService($name)
+    {
+        return $this->dic->getService($name);
+    }
 
 	/**
 	 * Converts a Request object into a Response object
@@ -32,7 +35,7 @@ class Kernel implements KernelInterface
 		try {
 			return $this->doHandle($request);
 		} catch (RouteNotFoundException $e) {
-			return $this->createResponse($request, 'Page Not Found', Response::HTTP_NOT_FOUND);
+			return $this->getService('renderer')->renderResponse('errors/404.twig', [ 'request' => $request, 'exception' => $e ], Response::HTTP_NOT_FOUND);
         } catch (MethodNotAllowedException $e) {
             return $this->createResponse($request, 'Method Not Allowed', Response::HTTP_METHOD_NOT_ALLOWED);
         } catch (\Exception $e) {
@@ -42,8 +45,15 @@ class Kernel implements KernelInterface
 
 	private function doHandle(RequestInterface $request)
     {
+        $router = $this->getService('router');
+        $factory = $this->getService('controller_factory');
+
         $context = RequestContext::createFromRequest($request);
-        $action = $this->controllers->createController($this->router->match($context));
+        $action = $factory->createController($router->match($context));
+
+        if ($action instanceof AbstractAction) {
+            $action->setServiceLocator($this->dic);
+        }
 
         $response = call_user_func_array($action, [ $request ]);
 
